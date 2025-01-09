@@ -1,0 +1,17 @@
+header:
+  seq: 0
+  stamp:
+    secs: 1504071530
+    nsecs: 0
+  frame_id: body
+transform:
+  rotation:
+    x: -0.705243
+    y: -0.708949
+    z: 0.003492
+    w: 0.003382
+  translation:
+    x: 1.11228
+    y: 0.369431
+    z: -1.41456
+child_frame_id: lidar_blue

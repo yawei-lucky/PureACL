@@ -1,0 +1,15 @@
+header:
+  seq: 0
+  stamp:
+    secs: 1504071530
+    nsecs: 0
+  frame_id: ''
+height: 860
+width: 1656
+distortion_model: rational_polynomial
+K: [943.974823, 0.0, 814.805639, 0.0, 944.657816, 551.278593, 0.0, 0.0, 1.0]
+R: [1.0, 0.0, 0.0, 0.0, 1.0, 0.0, 0.0, 0.0, 1.0]
+
+# Since this is the right camera when you see from stereo pair point of view, the Ty = Tz = 0, Tx = -fx' * B (m) [B = 0.5291]
+P: [943.974823, 0.0, 814.805639, -499.4571, 0.0, 944.657816, 551.278593, 0.0, 0.0, 0.0, 1.0, 0.0]
+

@@ -1,0 +1,17 @@
+header:
+  seq: 0
+  stamp:
+    secs: 1504071530
+    nsecs: 0
+  frame_id: body
+transform:
+  rotation:
+    x: 0.499920
+    y: 0.485602
+    z: 0.503343
+    w: 0.510800
+  translation:
+    x: 2.031573
+    y: -0.048833
+    z: -0.940294
+child_frame_id: camera_center

@@ -11,6 +11,9 @@ import os
 
 from ...settings import TRAINING_PATH
 from ..models import get_model
+from numpy.core import multiarray
+# 添加 `multiarray` 到全局允许列表
+torch.serialization.add_safe_globals([multiarray])
 
 logger = logging.getLogger(__name__)
 

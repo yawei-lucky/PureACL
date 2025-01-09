@@ -1,0 +1,17 @@
+header:
+  seq: 0
+  stamp:
+    secs: 1504071530
+    nsecs: 0
+  frame_id: body
+transform:
+  rotation:
+    x: -0.686868
+    y: -0.693733
+    z: 0.154474
+    w: -0.151932
+  translation:
+    x: 1.12584
+    y: -0.501281
+    z: -1.27249
+child_frame_id: lidar_yellow

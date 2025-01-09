@@ -114,6 +114,7 @@ class TwoViewRefiner(BaseModel):
             else:
                 extra_ratio = 0.05
             p2d_grd_key = extract_keypoints(grd_key_confidence, start_ratio = data[q]['camera'].c[0,1]/data[q]['camera'].size[0,1]+extra_ratio) #data['grd_ratio'][0])
+            # p2d_grd_key = extract_keypoints(grd_key_confidence, start_ratio = 0.6) #data['grd_ratio'][0])
 
             # turn grd key points from 2d to 3d, assume points are on ground
             p2d_c_key = data[q]['camera'].image2world(p2d_grd_key) # 2D->3D scale unknown
@@ -226,18 +227,26 @@ class TwoViewRefiner(BaseModel):
         def project(T_q2r):
             return cam_ref.world2image(T_q2r * points_3d)
 
-        p2D_r_gt, mask = project(data['T_q2r_gt'])
-        p2D_r_i, mask_i = project(data['T_q2r_init'])
-        mask = (mask & mask_i).float()
+        # p2D_r_gt, mask = project(data['T_q2r_gt'])
+        # D_r_i, mask_i = project(data['T_q2r_init'])
 
+        p2D_r_gt = 2 * data['T_q2r_gt'].t[:,:2] # 室内坐标系，不用重投影, 换算成米
+        # D_r_i = data['T_q2r_init']
+        # mask = (mask & mask_i).float()
+
+        # def reprojection_error(T_q2r):
+        #     p2D_r, _ = project(T_q2r)
+        #     err = torch.sum((p2D_r_gt - p2D_r)**2, dim=-1)
+        #     err = scaled_barron(1., 2.)(err)[0]/4
+        #     err = masked_mean(err, mask, -1)
+        #     return err
+
+            
         def reprojection_error(T_q2r):
-            p2D_r, _ = project(T_q2r)
-            err = torch.sum((p2D_r_gt - p2D_r)**2, dim=-1)
-            err = scaled_barron(1., 2.)(err)[0]/4
-            err = masked_mean(err, mask, -1)
+            err = torch.sum((p2D_r_gt - T_q2r)**2, dim = -1)
             return err
 
-        err_init = reprojection_error(pred['T_q2r_init'][0])
+        err_init = reprojection_error(pred['T_q2r_init'][0].t[:,:2])
 
         num_scales = len(self.extractor.scales)
         success = None
@@ -245,6 +254,9 @@ class TwoViewRefiner(BaseModel):
         if pose_loss:
             losses['pose_loss'] = 0
         for i, T_opt in enumerate(pred['T_q2r_opt']):
+            T_opt = T_opt.t[:,:2]
+            if i == 2:
+                print("pre:", T_opt, " ,GT:", p2D_r_gt)
             err = reprojection_error(T_opt).clamp(max=self.conf.clamp_error)
             loss = err / num_scales
             if i > 0:

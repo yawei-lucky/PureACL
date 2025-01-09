@@ -26,11 +26,13 @@ ImageFile.LOAD_TRUNCATED_IMAGES = True # add for 'broken data stream'
 points_type = 0 # 0: use 3d points from map, 1: use 3d points from lidar blue
 gt_from_gps = True #ture: pose gt from gps, False: pose gt from NED pose gt
 
-sat_dir = 'Satellite_Images_18'
+sat_dir = 'floor_plan_images'
 sat_zoom = 18
-log_id_train = "2017-08-04-V2-Log4"
-log_id_val = "2017-07-24-V2-Log4"
-log_id_test = "2017-10-26-V2-Log4"
+scene_images_dir = 'scene_images'
+
+log_id_train = "train.txt"
+log_id_val = "val.txt"
+log_id_test = "test.txt"
 map_points_dir = 'pcd'
 lidar_dir = 'lidar_blue_pointcloud'
 calib_dir = 'V2'
@@ -39,6 +41,18 @@ satellite_ori_size = 1280
 query_size = [432, 816]
 query_ori_size = [860, 1656]
 # query_grd_height=0.335 #1.6-1.265
+
+def read_txt_as_numpy(file_path):
+    """
+    读取 .txt 文件并返回 NumPy 数组
+    """
+    try:
+        # 读取 .txt 文件，每行按空格分割，转换为 NumPy 数组
+        data = np.loadtxt(file_path)
+        return data
+    except Exception as e:
+        print(f"Error reading {file_path}: {e}")
+        return None
 
 ToTensor = transforms.Compose([
     transforms.ToTensor()])
@@ -137,7 +151,7 @@ def inverse_pose(pose):
 
 class FordAV(BaseDataset):
     default_conf = {
-        'dataset_dir': '/datasets/work/d61-jca20-recon/work/Shan/dataset/FordAV', #"/home/shan/data/FordAV", #'/data/FordAV', #
+        'dataset_dir': '/data/yawei/PureACL/ford_data_process', #'/datasets/work/d61-jca20-recon/work/Shan/dataset/FordAV', #"/home/shan/data/FordAV", #'/data/FordAV', #
         'mul_query': 2
     }
 
@@ -216,47 +230,58 @@ class _Dataset(Dataset):
         self.SR_relPose_body[1, 3] = SR_relTrans_body[1]
         self.SR_relPose_body[2, 3] = SR_relTrans_body[2]
 
-        log_folder = os.path.join(self.root, self.log_id )
+        log_folder = os.path.join(self.root, 'drone' )
         info_folder = os.path.join(log_folder, info_dir )
 
         # get original image & location information
-        self.file_name = read_txt(info_folder, self.log_id  + '-FL-names.txt')
+        self.file_name = read_txt(info_folder, self.log_id)
         self.file_name.pop(0)
 
         # get the satellite images
         satellite_folder = os.path.join(log_folder, sat_dir)
-        satellite_names = glob(satellite_folder + '/*.png')
-        nb_satellite_images = len(satellite_names)
+        satellite_names = glob(satellite_folder + '/pure.jpg')
+        # nb_satellite_images = len(satellite_names)
         self.satellite_dict = {}
-        for i in range(nb_satellite_images):
-            cur_sat = int(os.path.split(satellite_names[i])[-1].split("_")[1])
-            self.satellite_dict[cur_sat] = satellite_names[i]
+        # for i in range(nb_satellite_images):
+        #     cur_sat = int(os.path.split(satellite_names[i])[-1].split("_")[1])
+        #     self.satellite_dict[cur_sat] = satellite_names[i]
+        self.satellite_dict[0] = satellite_names
 
-        self.groundview_yaws = read_numpy(info_folder, 'groundview_yaws_pose_gt.npy')  # 'groundview_yaws_pose.npy'
-        self.groundview_rolls = read_numpy(info_folder,  'groundview_rolls_pose_gt.npy')  # 'groundview_yaws_pose.npy'
-        self.groundview_pitchs = read_numpy(info_folder, 'groundview_pitchs_pose_gt.npy')  # 'groundview_yaws_pose.npy'
-        self.groundview_gps = read_numpy(info_folder, 'groundview_gps.npy')
+        # yawei comments
+        # self.groundview_yaws = read_numpy(info_folder, 'groundview_yaws_pose_gt.npy')  # 'groundview_yaws_pose.npy'
+        # self.groundview_rolls = read_numpy(info_folder,  'groundview_rolls_pose_gt.npy')  # 'groundview_yaws_pose.npy'
+        # self.groundview_pitchs = read_numpy(info_folder, 'groundview_pitchs_pose_gt.npy')  # 'groundview_yaws_pose.npy'
+        # yawei
+        if self.log_id == 'train.txt':
+            self.groundview_gps = read_txt_as_numpy(os.path.join(info_folder, 'groundview_pos_train.txt'))
+        elif  self.log_id == 'test.txt':
+            self.groundview_gps = read_txt_as_numpy(os.path.join(info_folder, 'groundview_pos_test.txt'))
+        else:
+            self.groundview_gps = read_txt_as_numpy(os.path.join(info_folder, 'groundview_pos_val.txt'))
+            
         if not gt_from_gps:
             self.groundview_ned = read_numpy(info_folder, "groundview_NED_pose_gt.npy")
-        self.match_pair = read_numpy(info_folder,
-                                'groundview_satellite_pair.npy')  # 'groundview_satellite_pair_2.npy'# 'groundview_gps_2.npy'
-
+        # self.match_pair = read_numpy(info_folder,
+        #                         'groundview_satellite_pair.npy')  # 'groundview_satellite_pair_2.npy'# 'groundview_gps_2.npy'
+        # self.match_pair = read_txt_as_numpy(os.path.join(info_folder, 'groundview_satellite_pair.txt'))
     def __len__(self):
         return len(self.file_name)
 
     def __getitem__(self, idx):
         ###############################
-        satellite_img = os.path.split(self.satellite_dict[self.match_pair[idx]])[-1].split("_")
-        satellite_gps = [float(satellite_img[3]), float(satellite_img[5])]
-
+        # satellite_img = os.path.split(self.satellite_dict[self.match_pair[idx]])[-1].split("_")
+        # satellite_gps = [float(satellite_img[3]), float(satellite_img[5])]
+        satellite_gps = [2, 1] # 图片中心的坐标
         # get the current resolution of satellite image
         # a scale at 2 when downloading the dataset
-        meter_per_pixel = 156543.03392 * np.cos(satellite_gps[0] * np.pi / 180.0) / np.power(2, sat_zoom) / 2.0
+        # meter_per_pixel = 156543.03392 * np.cos(satellite_gps[0] * np.pi / 180.0) / np.power(2, sat_zoom) / 2.0
+        meter_per_pixel = 1/20 # wait to accurate
 
         query_gps = self.groundview_gps[idx, :]
         # using the satellite image as the reference and calculate the offset of the ground-view query
-        dx, dy = gps_func.angular_distance_to_xy_distance_v2(satellite_gps[0], satellite_gps[1], query_gps[0],
-                                                             query_gps[1])
+        # dx, dy = gps_func.angular_distance_to_xy_distance_v2(satellite_gps[0], satellite_gps[1], query_gps[0],
+        #                                                      query_gps[1])
+        dx, dy = satellite_gps[0] - query_gps[0], satellite_gps[1] -  query_gps[1]
         # get the pixel offsets of car pose
         #dx_pixel = dx / meter_per_pixel # along the east direction
         #dy_pixel = -dy / meter_per_pixel # along the north direction
@@ -271,12 +296,23 @@ class _Dataset(Dataset):
             #dx_pixel = dx / meter_per_pixel # along the east direction
             #dy_pixel = -dy / meter_per_pixel # along the north direction
 
-        heading = self.groundview_yaws[idx] * np.pi / 180.0
-        roll = self.groundview_rolls[idx] * np.pi / 180.0
-        pitch = self.groundview_pitchs[idx] * np.pi / 180.0
+        # try:
+        # 可能报错的代码
+        # heading = self.groundview_yaws[idx] * np.pi / 180.0
+        # roll = self.groundview_rolls[idx] * np.pi / 180.0
+        # pitch = self.groundview_pitchs[idx] * np.pi / 180.0
+        
+        # yawei
+        heading = 0
+        roll = 0
+        pitch = 0
+        # yawei
 
         # sat
-        with Image.open(self.satellite_dict[self.match_pair[idx]], 'r') as SatMap:
+        # with Image.open(self.satellite_dict[self.match_pair[idx]], 'r') as SatMap:
+        #     sat_map = SatMap.convert('RGB')
+        #     sat_map = ToTensor(sat_map)
+        with Image.open(self.satellite_dict[0][0], 'r') as SatMap:
             sat_map = SatMap.convert('RGB')
             sat_map = ToTensor(sat_map)
 
@@ -297,7 +333,7 @@ class _Dataset(Dataset):
         }
 
         # grd ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
-        log_folder = os.path.join(self.root, self.log_id)
+        log_folder = os.path.join(self.root, 'drone')
         if self.conf['mul_query']>0:
             # ground images, rear right camera
             query_image_folder = os.path.join(log_folder, self.log_id + "-RR")
@@ -364,7 +400,7 @@ class _Dataset(Dataset):
                 }
 
         # ground images, front left color camera
-        query_image_folder = os.path.join(log_folder, self.log_id + "-FL")
+        query_image_folder = os.path.join(log_folder, "scene_images")
         name = os.path.join(query_image_folder, self.file_name[idx][:-1])
         with Image.open(name, 'r') as GrdImg:
             grd = GrdImg.convert('RGB')
@@ -397,10 +433,10 @@ class _Dataset(Dataset):
 
         # init and gt pose~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
         # ramdom shift translation and rotation on yaw
-        YawShiftRange = 15 * np.pi / 180 #error degree
+        YawShiftRange = 5 * np.pi / 180 #error degree
         yaw = 2 * YawShiftRange * np.random.random() - YawShiftRange
         # R_yaw = torch.tensor([[np.cos(yaw),-np.sin(yaw),0],  [np.sin(yaw),np.cos(yaw),0], [0, 0, 1]])
-        TShiftRange = 5 
+        TShiftRange = 2 
         T = 2 * TShiftRange * np.random.rand((3)) - TShiftRange
         T[2] = 0  # no shift on height
         #print(f'in dataset: yaw:{yaw/np.pi*180},t:{T}')
@@ -409,7 +445,6 @@ class _Dataset(Dataset):
         R_yaw = euler_matrix(0, 0, yaw)
         init_shift = Pose.from_Rt(R_yaw[:3,:3], T).float()
         body2sat_init = init_shift@body2sat
-
 
         data = {
             'ref': sat_image,
@@ -424,7 +459,9 @@ class _Dataset(Dataset):
         if self.conf['mul_query'] > 1:
             data['query_2'] = SL_image
             data['query_3'] = SR_image
-
+        # except AttributeError as e:
+        #     print(f"AttributeError caught: {e}")
+            # 修复逻辑，例如动态添加属性
         return data
 
 if __name__ == '__main__':

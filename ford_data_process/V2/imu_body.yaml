@@ -1,0 +1,17 @@
+header:
+  seq: 0
+  stamp:
+    secs: 1504071530
+    nsecs: 0
+  frame_id: body
+transform:
+  rotation:
+    x: 0
+    y: 0.000118
+    z: -0.000101
+    w: 0.999999
+  translation:
+    x: -0.0998
+    y: 0.0178
+    z: -0.4023
+child_frame_id: imu

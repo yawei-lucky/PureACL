@@ -1,0 +1,11 @@
+data:
+  name: ford
+  num_workers: 0
+  train_batch_size: 2
+  test_batch_size: 2
+  mul_query: 0
+train:
+  lr: 1.0e-05
+  seed: 2026881811
+model:
+  name: two_view_refiner

@@ -23,7 +23,7 @@ data_conf = {
     'train_batch_size': 1,
     'test_batch_size': 1,
     'num_workers': 0,
-    'mul_query': 2, # 0: 1 image input, 1: 2 image inputs, 2: 4 image inputs
+    'mul_query': 0, # 0: 1 image input, 1: 2 image inputs, 2: 4 image inputs
 }
 
 

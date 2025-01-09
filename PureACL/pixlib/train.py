@@ -1,7 +1,7 @@
 """
 A generic training script that works with any model and dataset.
 """
-
+from tqdm import tqdm
 import argparse
 from pathlib import Path
 import signal
@@ -16,12 +16,12 @@ from tqdm import tqdm
 import torch
 from torch.utils.tensorboard import SummaryWriter
 
-from datasets import get_dataset
-from models import get_model
-from utils.stdout_capturing import capture_outputs
+from PureACL.pixlib.datasets import get_dataset
+from PureACL.pixlib.models import get_model
+from PureACL.pixlib.utils.stdout_capturing import capture_outputs
 from PureACL.pixlib.utils.tools import AverageMetric, MedianMetric, set_seed, fork_rng
 from PureACL.pixlib.utils.tensor import batch_to_device
-from PureACL.pixlib.utils.experiments import (delete_old_checkpoints, get_last_checkpoint, get_best_checkpoint)
+# from PureACL.pixlib.utils.experiments import (delete_old_checkpoints, get_last_checkpoint, get_best_checkpoint)
 from PureACL.settings import TRAINING_PATH
 from PureACL import logger
 
@@ -32,7 +32,7 @@ import time
 
 default_train_conf = {
     'seed': 20,  # training seed
-    'epochs': 1,  # number of epochs
+    'epochs': 10,  # number of epochs
     'optimizer': 'adam',  # name of optimizer in [adam, sgd, rmsprop]
     'opt_regexp': None,  # regular expression to filter parameters to optimize
     'optimizer_options': {},  # optional arguments passed to the optimizer
@@ -244,6 +244,7 @@ def training(rank, conf, output_dir, args):
     signal.signal(signal.SIGINT, sigint_handler)
 
     model = get_model(conf.model.name)(conf.model).to(device)
+
     loss_fn, metrics_fn = model.loss, model.metrics
     if init_cp is not None:
         model.load_state_dict(init_cp['model'])
@@ -302,7 +303,7 @@ def training(rank, conf, output_dir, args):
         # if epoch > 0 and conf.train.dataset_callback_fn:
         #     getattr(train_loader.dataset, conf.train.dataset_callback_fn)(
         #         conf.train.seed + epoch)
-
+        # progress_bar = tqdm(enumerate(train_loader), total=len(train_loader), desc=f"Epoch {epoch+1}/{conf.train.epochs}", unit="batch")
         for it, data in enumerate(train_loader):
             tot_it = len(train_loader)*epoch + it
 
@@ -311,7 +312,7 @@ def training(rank, conf, output_dir, args):
             data = batch_to_device(data, device, non_blocking=True)
             pred = model(data)
             losses = loss_fn(pred, data)
-
+            
             loss = torch.mean(losses['total'])
             do_backward = loss.requires_grad
             if args.distributed:
@@ -376,6 +377,9 @@ def training(rank, conf, output_dir, args):
 
             if stop:
                 break
+            # 更新进度条的信息
+        # # 关闭进度条
+        # progress_bar.close()
 
         if rank == 0:
             state = (model.module if args.distributed else model).state_dict()
@@ -397,8 +401,8 @@ def training(rank, conf, output_dir, args):
                 logger.info(
                     f'New best checkpoint: {conf.train.best_key}={best_eval}')
                 shutil.copy(cp_path, str(output_dir / 'checkpoint_best.tar'))
-            delete_old_checkpoints(
-                output_dir, conf.train.keep_last_checkpoints)
+            # delete_old_checkpoints(
+            #     output_dir, conf.train.keep_last_checkpoints)
             del checkpoint
 
         epoch += 1
@@ -421,11 +425,11 @@ if __name__ == '__main__':
     parser.add_argument('--experiment', type=str, default='ford')
     parser.add_argument('--conf', type=str)
     parser.add_argument('--overfit', action='store_true', default=False)
-    parser.add_argument('--restore', action='store_true', default=True)
+    parser.add_argument('--restore', action='store_true', default=False)
     parser.add_argument('--distributed', action='store_true',default=False)
     parser.add_argument('--dotlist', nargs='*', default=["data.name=ford",
-                                                         "data.num_workers=0","data.train_batch_size=1","data.test_batch_size=1",
-                                                         "data.mul_query=2",# 0: 1 image input, 1: 2 image inputs, 2: 4 image inputs #ford height:1.6 kitti:1.65
+                                                         "data.num_workers=0","data.train_batch_size=2","data.test_batch_size=2",
+                                                         "data.mul_query=0",# 0: 1 image input, 1: 2 image inputs, 2: 4 image inputs #ford height:1.6 kitti:1.65
                                                          "train.lr=1e-5","model.name=two_view_refiner"])
     args = parser.parse_intermixed_args()
 
@@ -443,7 +447,7 @@ if __name__ == '__main__':
 
     if args.distributed:
         args.n_gpus = 2 #torch.cuda.device_count()
-        os.environ["CUDA_VISIBLE_DEVICES"] = '3,4'
+        os.environ["CUDA_VISIBLE_DEVICES"] = '2,3'
         os.environ["MASTER_ADDR"] = 'localhost'
         os.environ["MASTER_PORT"] = '1250'
 
@@ -462,5 +466,6 @@ if __name__ == '__main__':
             main_worker, nprocs=args.n_gpus,
             args=(conf, output_dir, args))
     else:
-        os.environ["CUDA_VISIBLE_DEVICES"] = '0'
+        os.environ["CUDA_VISIBLE_DEVICES"] = "2"
+        current_device = torch.cuda.current_device()
         main_worker(0, conf, output_dir, args)

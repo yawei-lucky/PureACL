@@ -1,0 +1,7 @@
+/data/yawei/PureACL/ford_data_process/drone/scene_images/testa01: 62
+/data/yawei/PureACL/ford_data_process/drone/scene_images/testa02: 61
+/data/yawei/PureACL/ford_data_process/drone/scene_images/testa03: 54
+/data/yawei/PureACL/ford_data_process/drone/scene_images/testa04: 66
+/data/yawei/PureACL/ford_data_process/drone/scene_images/testa05: 61
+/data/yawei/PureACL/ford_data_process/drone/scene_images/testa06: 66
+/data/yawei/PureACL/ford_data_process/drone/scene_images/testa07: 58
